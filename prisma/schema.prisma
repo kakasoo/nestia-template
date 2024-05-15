@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 로그인하지 않은 유저를 유니크하게 식별하기 위해 매 요청에 대한 uuid를 브라우저로부터 받아 생성한다.
+model User {
+  id        String   @id @default(uuid()) // 동일한 세션에 대해서는 동일한 아이디를 부여한 것으로 클라이언트가 생성한다.
+  memberId  String? // 해당 세션이 누군인지 파악되었다면 meberId를 기록한다.
+  createdAt DateTime @default(now())
+
+  member Member? @relation(fields: [memberId], references: [id])
+  Log    Log[]
+}
+
+// 회원가입한 유저를 의미한다.
+model Member {
+  id             String   @id @default(uuid())
+  name           String? // 회원의 실제 이름
+  nickname       String? // 회원의 별명
+  phone          String // 회원의 전화번호
+  email          String // 회원의 이메일 주소
+  hashedPassword String // 회원의 비밀번호로 암호화된 값을 의미한다.
+  age            Int? // 회원의 나이
+  gender         String? // 회원의 성별 (MALE | FEMALE)
+  address        String? // 회원의 주소
+  occupation     String? // 회원의 직업
+  deleted        Boolean  @default(false) // 정보가 삭제됐는지 여부로 삭제 시간은 updatedAt으로 판단
+  createdAt      DateTime @default(now()) // 회원 정보가 생성된 날짜
+  updatedAt      DateTime @updatedAt // 정보 최근 업데이트일
+
+  user User[]
+}
+
+// 모든 요청에 대한 기록을 남긴다.
+model Log {
+  id        String   @id @default(uuid()) // 로그의 고유한 아이디로 Request 객체에 id를 붙여 사용한다.
+  userId    String // 어떤 유저가 요청을 했는지를 의미한다.
+  method    String // 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  url       String
+  headers   String
+  query     String?
+  param     String?
+  body      String?
+  ttl       Int? // ms 단위로, 해당 요청에 대한 요청부터 응답까지의 시간을 측정한 것
+  error     Boolean  @default(false) // 에러 발생 시 Filter에서 Request 객체에서 id를 꺼내 업데이트한다.
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
